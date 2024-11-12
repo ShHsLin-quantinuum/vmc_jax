@@ -29,7 +29,7 @@ class Operator(metaclass=abc.ABCMeta):
         Arguments:
             * ``s``: A single basis configuration.
             * ``*args``: Further positional arguments. E.g. time in the case of time-dependent operators.
-        Returns: 
+        Returns:
             A tuple ``sp, matEls``, where ``sp`` is the list of connected basis configurations \
             (as ``jax.numpy.array``) and ``matEls`` the corresponding matrix elements.
 
@@ -84,7 +84,7 @@ class Operator(metaclass=abc.ABCMeta):
                                             in_axes=(0, 0, None)
                                         )
         self._get_Oloc_slice_pmapd = global_defs.pmap_for_my_devices(
-                                            lambda d, startIdx, sliceSize: jax.lax.dynamic_slice_in_dim(d, startIdx, sliceSize), 
+                                            lambda d, startIdx, sliceSize: jax.lax.dynamic_slice_in_dim(d, startIdx, sliceSize),
                                             in_axes=(0, None, None), static_broadcasted_argnums=(2,)
                                         )
 
@@ -185,7 +185,13 @@ class Operator(metaclass=abc.ABCMeta):
         if self.ElocBatchSize > 0:
             return self.get_O_loc_batched(samples, psi, logPsiS, self.ElocBatchSize, *args)
         else:
+            a, b, Lx, Ly = samples.shape
+            samples = samples.reshape([a, b, Lx*Ly])
             sampleOffdConfigs, _ = self.get_s_primes(samples, *args)
+            a, b, _ = sampleOffdConfigs.shape
+            sampleOffdConfigs = sampleOffdConfigs.reshape([a, b, Lx, Ly])
+
+            # sampleOffdConfigs, _ = self.get_s_primes(samples, *args)
             logPsiSP = psi(sampleOffdConfigs)
             if not psi.logarithmic:
                 logPsiSP = jnp.log(logPsiSP)
@@ -259,7 +265,7 @@ class Operator(metaclass=abc.ABCMeta):
                     Oloc = self._alloc_Oloc_real_pmapd(samples)
 
             Oloc = self._insert_Oloc_batch_pmapd(Oloc, OlocBatch, b * batchSize)
-        
+
         if remainder > 0:
 
             batch = self._get_config_batch_pmapd(samples, numBatches * batchSize, remainder)
@@ -270,7 +276,7 @@ class Operator(metaclass=abc.ABCMeta):
             sp, _ = self.get_s_primes(batch, *args)
 
             OlocBatch = self.get_O_loc_unbatched(logPsiSbatch, psi(sp))
-        
+
             OlocBatch = self._get_Oloc_slice_pmapd(OlocBatch, 0, remainder)
 
             Oloc = self._insert_Oloc_batch_pmapd(Oloc, OlocBatch, numBatches * batchSize)
@@ -287,7 +293,7 @@ class Operator(metaclass=abc.ABCMeta):
     def get_estimator_function(self, psi, *args):
         """Get a function that computes :math:`O_{loc}(\\theta, s)`.
 
-        Returns a function that computes :math:`O_{loc}(\\theta, s)=\sum_{s'} O_{s,s'}\\frac{\psi_\\theta(s')}{\psi_\\theta(s)}` 
+        Returns a function that computes :math:`O_{loc}(\\theta, s)=\sum_{s'} O_{s,s'}\\frac{\psi_\\theta(s')}{\psi_\\theta(s)}`
         for a given configuration :math:`s` and parameters :math:`\\theta` of a given ansatz :math:`\psi_\\theta(s)`.
 
         Arguments:

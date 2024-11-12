@@ -2,8 +2,11 @@ import numpy as np
 
 # Complex floating point
 tCpx = np.complex128
+# tCpx = np.complex64
+
 # Real floating point
 tReal = np.float64
+# tReal = np.float32
 
 from mpi4py import MPI
 
